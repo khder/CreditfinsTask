@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 class MoviesListRepository(private val apiHelper: ApiHelper,
                            private val appContext: Context) {
-      fun getArticles(page: Int): Resource<List<Movie>> {
+      fun getMovies(page: Int): Resource<List<Movie>> {
          if(appContext.isNetworkConnected()){
              return getArticlesFromNetwork(page)
          }else{
