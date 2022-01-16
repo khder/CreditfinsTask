@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.creditfins.creditfinstask.data.models.Movie
 import com.creditfins.creditfinstask.data.models.Resource
 import com.creditfins.creditfinstask.data.network.ApiHelper
+import com.creditfins.creditfinstask.data.utils.JsonParserUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async

@@ -5,10 +5,16 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.creditfins.creditfinstask.R
+import com.creditfins.creditfinstask.data.models.Movie
+import com.creditfins.creditfinstask.data.models.Status
 import com.creditfins.creditfinstask.databinding.FragmentMoviesListBinding
+import com.creditfins.creditfinstask.di.ObjectsProvider
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -27,9 +33,52 @@ class MoviesListFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_movies_list, container, false)
+        binding = FragmentMoviesListBinding.inflate(inflater,container,false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        setupPaginationListener()
+        setupViewModel()
+        setupObserver()
+        moviesListViewModel.getMovies()
+        addDividerDecorator()
+    }
+
+    private fun setupViewModel(){
+        moviesListViewModel = ViewModelProvider(this,MoviesListViewModelFactory(
+            ObjectsProvider.getMoviesListRepository(requireContext().applicationContext)
+        )).get(MoviesListViewModel::class.java)
+    }
+
+    private fun setupObserver(){
+        moviesListViewModel.moviesLiveData.observe(viewLifecycleOwner,{
+            when(it.status){
+                Status.LOADING -> {
+                    if (moviesListViewModel.isFirstPage()) {
+                        binding.list.visibility = View.GONE
+                        binding.progressCircular.visibility = View.VISIBLE
+                    } else {
+                        moviesListAdapter.addPagination()
+                    }
+                }
+                Status.SUCCESS ->{
+                    if(moviesListViewModel.isFirstPage()){
+                        binding.list.visibility = View.VISIBLE
+                        binding.progressCircular.visibility = View.GONE
+                        moviesListAdapter = MoviesListAdapter(it.data!! as ArrayList<Movie>,
+                            ::onCLick)
+                    }else{
+                       moviesListAdapter.removePagination()
+                       moviesListAdapter.updateMoviesList(it.data!!)
+                    }
+                    moviesListViewModel.increasePages()
+                }
+                Status.ERROR-> Toast.makeText(requireContext(),it.message,Toast.LENGTH_LONG).show()
+            }
+        })
     }
 
     private fun setupPaginationListener(){
@@ -44,7 +93,7 @@ class MoviesListFragment : Fragment() {
                             .findFirstVisibleItemPosition()
                         if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
                             moviesListViewModel.setIsLoading(true)
-                            loadMovies()
+                            moviesListViewModel.getMovies()
                         }
                     }
                 }
@@ -52,13 +101,16 @@ class MoviesListFragment : Fragment() {
         })
     }
 
-    private fun loadMovies(){
-        if (moviesListViewModel.isFirstPage()) {
-            binding.list.visibility = View.GONE
-            binding.progressCircular.visibility = View.VISIBLE
-        } else {
-            newsAdapter.addPagination()
-        }
-        moviesListViewModel.loadMovies()
+    private fun addDividerDecorator(){
+        binding.list.addItemDecoration(
+            DividerItemDecoration(
+                binding.list.context,
+                (binding.list.layoutManager as LinearLayoutManager).orientation
+            )
+        )
+    }
+
+    private fun onCLick(movie: Movie){
+
     }
 }
