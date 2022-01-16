@@ -6,12 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.*
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.creditfins.creditfinstask.R
 import com.creditfins.creditfinstask.data.models.Movie
+import com.creditfins.creditfinstask.data.models.Resource
 import com.creditfins.creditfinstask.data.models.Status
 import com.creditfins.creditfinstask.databinding.FragmentMoviesListBinding
 import com.creditfins.creditfinstask.di.ObjectsProvider
@@ -42,8 +42,11 @@ class MoviesListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupPaginationListener()
         setupViewModel()
-        setupObserver()
-        moviesListViewModel.getMovies()
+        loadMovies()
+        moviesListAdapter = MoviesListAdapter(
+            ArrayList(),
+            ::onCLick)
+        binding.list.adapter = moviesListAdapter
         addDividerDecorator()
     }
 
@@ -53,32 +56,43 @@ class MoviesListFragment : Fragment() {
         )).get(MoviesListViewModel::class.java)
     }
 
-    private fun setupObserver(){
-        moviesListViewModel.moviesLiveData.observe(viewLifecycleOwner,{
-            when(it.status){
-                Status.LOADING -> {
-                    if (moviesListViewModel.isFirstPage()) {
-                        binding.list.visibility = View.GONE
-                        binding.progressCircular.visibility = View.VISIBLE
-                    } else {
-                        moviesListAdapter.addPagination()
+    private fun loadMovies(){
+        val liveData = moviesListViewModel.getMovies()
+        val observer:Observer<Resource<List<Movie>>> = object : Observer<Resource<List<Movie>>> {
+            override fun onChanged(resource: Resource<List<Movie>>?) {
+                when (resource!!.status) {
+                    Status.LOADING -> {
+                        if (moviesListViewModel.isFirstPage()) {
+                            binding.list.visibility = View.GONE
+                            binding.progressCircular.visibility = View.VISIBLE
+                        } else {
+                            moviesListAdapter.addPagination()
+                        }
+                    }
+                    Status.SUCCESS -> {
+                        if (moviesListViewModel.isFirstPage()) {
+                            binding.list.visibility = View.VISIBLE
+                            binding.progressCircular.visibility = View.GONE
+                        } else {
+                            moviesListAdapter.removePagination()
+                        }
+                        moviesListAdapter.updateMoviesList(resource.data!!)
+                        moviesListViewModel.increasePages()
+                        moviesListViewModel.setIsLoading(false)
+                        liveData.removeObserver(this)
+                    }
+                    Status.ERROR -> {
+                        Toast.makeText(
+                            requireContext(),
+                            resource.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                        liveData.removeObserver(this)
                     }
                 }
-                Status.SUCCESS ->{
-                    if(moviesListViewModel.isFirstPage()){
-                        binding.list.visibility = View.VISIBLE
-                        binding.progressCircular.visibility = View.GONE
-                        moviesListAdapter = MoviesListAdapter(it.data!! as ArrayList<Movie>,
-                            ::onCLick)
-                    }else{
-                       moviesListAdapter.removePagination()
-                       moviesListAdapter.updateMoviesList(it.data!!)
-                    }
-                    moviesListViewModel.increasePages()
-                }
-                Status.ERROR-> Toast.makeText(requireContext(),it.message,Toast.LENGTH_LONG).show()
             }
-        })
+        }
+        liveData.observe(viewLifecycleOwner,observer)
     }
 
     private fun setupPaginationListener(){
@@ -93,7 +107,7 @@ class MoviesListFragment : Fragment() {
                             .findFirstVisibleItemPosition()
                         if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
                             moviesListViewModel.setIsLoading(true)
-                            moviesListViewModel.getMovies()
+                            loadMovies()
                         }
                     }
                 }

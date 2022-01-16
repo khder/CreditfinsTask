@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CreditfinsTask</string>
+    <string name="movies_list_title">MoviesList</string>
 </resources>

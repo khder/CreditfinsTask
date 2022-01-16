@@ -27,7 +27,9 @@ class MoviesListAdapter(private val movies:ArrayList<Movie>,
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-
+        if(getItemViewType(position)==ITEM_ROW){
+            (holder as MovieHolder).binding.movie = movies[position]
+        }
     }
 
     override fun getItemCount(): Int {
@@ -47,10 +49,10 @@ class MoviesListAdapter(private val movies:ArrayList<Movie>,
         notifyItemInserted(movies.size-1)
     }
 
-    fun updateMoviesList(movies: List<Movie>){
+    fun updateMoviesList(newMovies: List<Movie>){
         val oldSize = movies.size
-        this.movies.addAll(movies)
-        notifyItemRangeInserted(oldSize,this.movies.size)
+        movies.addAll(newMovies)
+        notifyItemRangeInserted(oldSize,movies.size)
     }
 
     override fun getItemViewType(position: Int): Int {
